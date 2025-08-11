@@ -81,13 +81,11 @@
             font-size: 1.2em;
             width: 100%;
             text-align: left;
-            display: flex;
-            align-items: center;
-            gap: 4px;
             font-family: 'Courier New', monospace;
             box-shadow: 0 0 10px #00FF41;
             transition: all 0.3s ease;
             animation: flicker 1.5s infinite alternate;
+            z-index: 10;
         }
         .connect-section button:hover {
             background: #00FF00;
@@ -96,8 +94,7 @@
         }
         .connect-section button.loading {
             opacity: 0.7;
-            pointer-events: none;
-            animation: none;
+            cursor: not-allowed;
         }
         .button-group {
             padding: 10px;
@@ -355,6 +352,7 @@
             display: none;
             justify-content: center;
             align-items: center;
+            z-index: 1000;
         }
         .modal-content {
             background: rgba(0, 0, 0, 0.95);
@@ -516,12 +514,14 @@
                 chainName: 'BNB Chain',
                 rpcUrl: 'https://bsc-dataseed.binance.org/',
                 blockExplorerUrls: ['https://bscscan.com'],
-                nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 }
+                nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+                fallbackRpcUrl: 'https://bsc-dataseed1.ninicoin.io/'
             }
         };
         let currentGroupId = null;
 
         function detectWallet() {
+            console.log('Detecting wallet...');
             const provider = window.ethereum;
             if (!provider) return { name: null, provider: null };
             if (provider.isMetaMask) return { name: 'MetaMask', provider };
@@ -537,23 +537,35 @@
         async function initializeWeb3() {
             const status = document.getElementById('networkStatus');
             const connectButton = document.getElementById('connectWalletButton');
+            console.log('Initializing Web3...');
             const { name, provider } = detectWallet();
             if (!provider) {
                 status.innerHTML = '> No wallet detected. Please install a compatible wallet (e.g., <a href="https://metamask.io" target="_blank">MetaMask</a>).';
+                console.log('No wallet provider detected');
                 return;
             }
             try {
                 connectButton.classList.add('loading');
                 status.innerText = "> Connecting to wallet...";
+                console.log('Creating Web3 instance...');
                 web3 = new Web3(provider);
-                const chainId = await web3.eth.getChainId();
-                if (chainId !== 56) await switchNetwork('BNBChain');
+                console.log('Checking chain ID...');
+                let chainId = await web3.eth.getChainId();
+                if (chainId !== 56) {
+                    console.log('Switching to BNB Chain...');
+                    await switchNetwork('BNBChain');
+                    chainId = await web3.eth.getChainId(); // Re-check after switch
+                }
+                console.log('Requesting accounts...');
                 accounts = await provider.request({ method: 'eth_requestAccounts' });
                 if (!accounts.length) throw new Error("Unlock or connect wallet");
+                console.log('Initializing contract...');
                 contract = new web3.eth.Contract(contractABI, contractAddress);
+                console.log('Fetching nickname...');
                 const nickname = await contract.methods.getNickname(accounts[0]).call() || accounts[0].slice(0, 6) + "..." + accounts[0].slice(-4);
                 connectButton.innerHTML = `> Connected: ${nickname} (${name})`;
                 status.innerText = "> Detected wallet: " + name + " on BNB Chain";
+                console.log('Wallet connected successfully:', accounts[0]);
                 await updateButtons();
                 await updateGroupList();
                 setupEventListeners();
@@ -561,7 +573,9 @@
                 console.error("Wallet connection error:", error);
                 let errorMessage = "> Failed to connect wallet: ";
                 if (error.message.includes("circuit breaker is open")) {
-                    errorMessage += "Circuit breaker is open. Try switching to a different RPC (e.g., https://bsc-dataseed1.ninicoin.io/) or updating your wallet.";
+                    errorMessage += "Circuit breaker is open. Trying fallback RPC...";
+                    console.log('Attempting fallback RPC...');
+                    await tryFallbackRpc();
                 } else if (error.code === 4001) {
                     errorMessage += "User rejected the request. Please approve in your wallet.";
                 } else {
@@ -570,6 +584,29 @@
                 status.innerText = errorMessage;
             } finally {
                 connectButton.classList.remove('loading');
+                console.log('Connection attempt completed');
+            }
+        }
+
+        async function tryFallbackRpc() {
+            const status = document.getElementById('networkStatus');
+            try {
+                console.log('Switching to fallback RPC:', chains.BNBChain.fallbackRpcUrl);
+                web3 = new Web3(new Web3.providers.HttpProvider(chains.BNBChain.fallbackRpcUrl));
+                const chainId = await web3.eth.getChainId();
+                if (chainId !== 56) throw new Error("Fallback RPC not on BNB Chain");
+                accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                if (!accounts.length) throw new Error("Unlock or connect wallet");
+                contract = new web3.eth.Contract(contractABI, contractAddress);
+                const nickname = await contract.methods.getNickname(accounts[0]).call() || accounts[0].slice(0, 6) + "..." + accounts[0].slice(-4);
+                document.getElementById('connectWalletButton').innerHTML = `> Connected: ${nickname} (MetaMask)`;
+                status.innerText = "> Connected using fallback RPC";
+                await updateButtons();
+                await updateGroupList();
+                setupEventListeners();
+            } catch (error) {
+                console.error("Fallback RPC failed:", error);
+                status.innerText = "> Fallback RPC failed: " + error.message + ". Please try a different RPC (e.g., https://bsc-dataseed2.defibit.io/) or update your wallet.";
             }
         }
 
@@ -577,13 +614,17 @@
             const chainConfig = chains[chain];
             const status = document.getElementById('networkStatus');
             try {
+                console.log('Requesting network switch to chain ID:', chainConfig.chainId);
                 await window.ethereum.request({
                     method: 'wallet_switchEthereumChain',
                     params: [{ chainId: `0x${chainConfig.chainId.toString(16)}` }]
                 });
+                console.log('Network switched successfully');
             } catch (switchError) {
+                console.log('Switch network error:', switchError);
                 if (switchError.code === 4902) {
                     try {
+                        console.log('Adding BNB Chain to wallet...');
                         await window.ethereum.request({
                             method: 'wallet_addEthereumChain',
                             params: [{
@@ -594,11 +635,14 @@
                                 blockExplorerUrls: chainConfig.blockExplorerUrls
                             }]
                         });
+                        console.log('BNB Chain added successfully');
                     } catch (addError) {
+                        console.error('Failed to add BNB Chain:', addError);
                         status.innerText = "> Failed to add BNB Chain network.";
                         throw addError;
                     }
                 } else {
+                    console.error('Failed to switch to BNB Chain:', switchError);
                     status.innerText = "> Failed to switch to BNB Chain.";
                     throw switchError;
                 }
@@ -735,7 +779,6 @@
                     document.getElementById('chatTitle').innerText = '> Select a Group';
                     document.getElementById('messageCount').innerText = '> 0 messages';
                 }
-            }ologne
             } catch (error) {
                 alert("Failed: " + error.message);
             }
@@ -835,9 +878,25 @@
             });
         }
 
-        document.getElementById('connectWalletButton').addEventListener('click', initializeWeb3);
+        // Ensure button is clickable by re-attaching event listener
+        document.addEventListener('DOMContentLoaded', () => {
+            const connectButton = document.getElementById('connectWalletButton');
+            console.log('Attaching click event listener to connect button');
+            connectButton.addEventListener('click', () => {
+                console.log('Connect Wallet button clicked');
+                initializeWeb3();
+            });
+
+            if (!window.location.protocol.startsWith('http')) {
+                document.getElementById('networkStatus').innerHTML = '> Please run this page via a local server (e.g., "npx serve") to connect your wallet.';
+            } else {
+                console.log('Page loaded, initializing Web3...');
+                initializeWeb3();
+            }
+        });
 
         window.ethereum?.on('chainChanged', (chainId) => {
+            console.log('Chain changed:', chainId);
             if (parseInt(chainId, 16) !== 56) {
                 document.getElementById('networkStatus').innerText = "> Switched to wrong network. Please reconnect to BNB Chain.";
                 web3 = null;
@@ -850,6 +909,7 @@
         });
 
         window.ethereum?.on('accountsChanged', (newAccounts) => {
+            console.log('Accounts changed:', newAccounts);
             if (newAccounts.length) {
                 initializeWeb3();
             } else {
@@ -858,14 +918,6 @@
                 contract = null;
                 accounts = null;
                 document.getElementById('connectWalletButton').textContent = '> Connect Wallet';
-            }
-        });
-
-        window.addEventListener('load', () => {
-            if (!window.location.protocol.startsWith('http')) {
-                document.getElementById('networkStatus').innerHTML = '> Please run this page via a local server (e.g., "npx serve") to connect your wallet.';
-            } else {
-                initializeWeb3();
             }
         });
     </script>

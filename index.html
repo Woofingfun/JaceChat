@@ -510,12 +510,14 @@
         const erc20ABI = [
             {"constant":true,"inputs":[],"name":"symbol","outputs":[{"name":"","type":"string"}],"stateMutability":"view","type":"function"}
         ];
-        const bnbChain = {
-            chainId: 56,
-            chainName: 'BNB Chain',
-            nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
-            rpcUrls: ['https://bsc-dataseed.binance.org/'],
-            blockExplorerUrls: ['https://bscscan.com']
+        const chains = {
+            BNBChain: {
+                chainId: 56,
+                chainName: 'BNB Chain',
+                rpcUrl: 'https://bsc-dataseed.binance.org/',
+                blockExplorerUrls: ['https://bscscan.com'],
+                nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 }
+            }
         };
         let currentGroupId = null;
 
@@ -544,17 +546,14 @@
                 connectButton.classList.add('loading');
                 status.innerText = "> Connecting to wallet...";
                 web3 = new Web3(provider);
-                const chainId = await retryOperation(() => web3.eth.getChainId(), 3, 1000);
-                if (chainId !== 56) {
-                    status.innerText = "> Switching to BNB Chain...";
-                    await switchNetwork();
-                }
+                const chainId = await web3.eth.getChainId();
+                if (chainId !== 56) await switchNetwork('BNBChain');
                 accounts = await provider.request({ method: 'eth_requestAccounts' });
                 if (!accounts.length) throw new Error("Unlock or connect wallet");
                 contract = new web3.eth.Contract(contractABI, contractAddress);
-                const nickname = await retryOperation(() => contract.methods.getNickname(accounts[0]).call(), 3, 1000) || accounts[0].slice(0, 6) + "..." + accounts[0].slice(-4);
+                const nickname = await contract.methods.getNickname(accounts[0]).call() || accounts[0].slice(0, 6) + "..." + accounts[0].slice(-4);
                 connectButton.innerHTML = `> Connected: ${nickname} (${name})`;
-                status.innerText = "> Connected to BNB Chain";
+                status.innerText = "> Detected wallet: " + name + " on BNB Chain";
                 await updateButtons();
                 await updateGroupList();
                 setupEventListeners();
@@ -562,7 +561,7 @@
                 console.error("Wallet connection error:", error);
                 let errorMessage = "> Failed to connect wallet: ";
                 if (error.message.includes("circuit breaker is open")) {
-                    errorMessage += "Circuit breaker is open. Try switching to a different RPC (e.g., https://bsc-dataseed2.defibit.io/) or updating your wallet.";
+                    errorMessage += "Circuit breaker is open. Try switching to a different RPC (e.g., https://bsc-dataseed1.ninicoin.io/) or updating your wallet.";
                 } else if (error.code === 4001) {
                     errorMessage += "User rejected the request. Please approve in your wallet.";
                 } else {
@@ -574,11 +573,13 @@
             }
         }
 
-        async function switchNetwork() {
+        async function switchNetwork(chain) {
+            const chainConfig = chains[chain];
+            const status = document.getElementById('networkStatus');
             try {
                 await window.ethereum.request({
                     method: 'wallet_switchEthereumChain',
-                    params: [{ chainId: `0x${bnbChain.chainId.toString(16)}` }]
+                    params: [{ chainId: `0x${chainConfig.chainId.toString(16)}` }]
                 });
             } catch (switchError) {
                 if (switchError.code === 4902) {
@@ -586,42 +587,28 @@
                         await window.ethereum.request({
                             method: 'wallet_addEthereumChain',
                             params: [{
-                                chainId: `0x${bnbChain.chainId.toString(16)}`,
-                                chainName: bnbChain.chainName,
-                                rpcUrls: bnbChain.rpcUrls,
-                                nativeCurrency: bnbChain.nativeCurrency,
-                                blockExplorerUrls: bnbChain.blockExplorerUrls
+                                chainId: `0x${chainConfig.chainId.toString(16)}`,
+                                chainName: chainConfig.chainName,
+                                rpcUrls: [chainConfig.rpcUrl],
+                                nativeCurrency: chainConfig.nativeCurrency,
+                                blockExplorerUrls: chainConfig.blockExplorerUrls
                             }]
                         });
                     } catch (addError) {
-                        throw new Error(`Failed to add BNB Chain: ${addError.message}`);
+                        status.innerText = "> Failed to add BNB Chain network.";
+                        throw addError;
                     }
                 } else {
-                    throw new Error(`Failed to switch to BNB Chain: ${switchError.message}`);
+                    status.innerText = "> Failed to switch to BNB Chain.";
+                    throw switchError;
                 }
             }
-        }
-
-        async function retryOperation(operation, maxRetries, delayMs) {
-            let lastError;
-            for (let i = 0; i < maxRetries; i++) {
-                try {
-                    return await operation();
-                } catch (error) {
-                    lastError = error;
-                    console.warn(`Retry ${i + 1}/${maxRetries} failed: ${error.message}`);
-                    if (i < maxRetries - 1) {
-                        await new Promise(resolve => setTimeout(resolve, delayMs));
-                    }
-                }
-            }
-            throw lastError;
         }
 
         async function updateButtons() {
             if (!contract || !accounts) return;
             try {
-                const result = await retryOperation(() => contract.methods.getGroupIdByCreator(accounts[0]).call(), 3, 1000);
+                const result = await contract.methods.getGroupIdByCreator(accounts[0]).call();
                 const createButton = document.getElementById('createGroupButton');
                 if (result.hasGroup) {
                     createButton.textContent = `> Group ID: ${result.groupId}`;
@@ -632,7 +619,7 @@
                     createButton.classList.remove('disabled');
                     createButton.onclick = () => openCreateGroupModal();
                 }
-                const nickname = await retryOperation(() => contract.methods.getNickname(accounts[0]).call(), 3, 1000);
+                const nickname = await contract.methods.getNickname(accounts[0]).call();
                 const nicknameButton = document.getElementById('setNicknameButton');
                 if (nickname && nickname.trim() !== '') {
                     nicknameButton.textContent = `> ${nickname}`;
@@ -651,7 +638,7 @@
         async function getTokenSymbol(tokenAddress) {
             try {
                 const tokenContract = new web3.eth.Contract(erc20ABI, tokenAddress);
-                const symbol = await retryOperation(() => tokenContract.methods.symbol().call(), 3, 1000);
+                const symbol = await tokenContract.methods.symbol().call();
                 return symbol || "Unknown";
             } catch (error) {
                 console.error("Error fetching token symbol:", error);
@@ -662,12 +649,12 @@
         async function updateGroupList() {
             if (!contract || !accounts) return;
             try {
-                const groupIds = await retryOperation(() => contract.methods.getUserJoinedGroups(accounts[0]).call(), 3, 1000);
+                const groupIds = await contract.methods.getUserJoinedGroups(accounts[0]).call();
                 const groupList = document.getElementById('groupList');
                 groupList.innerHTML = '';
                 for (let groupId of groupIds) {
-                    const group = await retryOperation(() => contract.methods.groups(groupId).call(), 3, 1000);
-                    const nickname = await retryOperation(() => contract.methods.getNickname(accounts[0]).call(), 3, 1000) || accounts[0].slice(0, 6) + "...";
+                    const group = await contract.methods.groups(groupId).call();
+                    const nickname = await contract.methods.getNickname(accounts[0]).call() || accounts[0].slice(0, 6) + "...";
                     const tokenSymbol = await getTokenSymbol(group.paymentToken);
                     const li = document.createElement('li');
                     li.className = 'user-item';
@@ -719,7 +706,7 @@
             if (!contract || !accounts) return alert("Connect wallet first!");
             const groupId = document.getElementById('groupIdInput').value;
             try {
-                const group = await retryOperation(() => contract.methods.groups(groupId).call(), 3, 1000);
+                const group = await contract.methods.groups(groupId).call();
                 const joinFeeWei = group.joinFee;
                 const joinFeeEther = web3.utils.fromWei(joinFeeWei, "ether");
                 const tokenSymbol = await getTokenSymbol(group.paymentToken);
@@ -748,6 +735,7 @@
                     document.getElementById('chatTitle').innerText = '> Select a Group';
                     document.getElementById('messageCount').innerText = '> 0 messages';
                 }
+            }ologne
             } catch (error) {
                 alert("Failed: " + error.message);
             }
@@ -756,9 +744,9 @@
         async function selectGroup(groupId) {
             currentGroupId = parseInt(groupId);
             try {
-                const group = await retryOperation(() => contract.methods.groups(currentGroupId).call(), 3, 1000);
+                const group = await contract.methods.groups(currentGroupId).call();
                 document.getElementById('chatTitle').innerText = `> ${group.name}`;
-                const messages = await retryOperation(() => contract.methods.getMessages(currentGroupId, 0, 100).call(), 3, 1000);
+                const messages = await contract.methods.getMessages(currentGroupId, 0, 100).call();
                 document.getElementById('messageCount').innerText = `> ${messages.length} messages`;
                 await loadMessages();
             } catch (error) {
@@ -769,13 +757,13 @@
         async function loadMessages() {
             if (!contract || !accounts || !currentGroupId) return alert("Select a group first!");
             try {
-                const joinedGroups = await retryOperation(() => contract.methods.getUserJoinedGroups(accounts[0]).call(), 3, 1000);
+                const joinedGroups = await contract.methods.getUserJoinedGroups(accounts[0]).call();
                 if (!joinedGroups.includes(currentGroupId.toString())) return alert("You are not a member!");
-                const messages = await retryOperation(() => contract.methods.getMessages(currentGroupId, 0, 100).call(), 3, 1000);
+                const messages = await contract.methods.getMessages(currentGroupId, 0, 100).call();
                 const messageList = document.getElementById('messageList');
                 if (messages.length) {
                     const messageHTML = await Promise.all(messages.map(async msg => {
-                        const senderNickname = msg.sender === accounts[0] ? (await retryOperation(() => contract.methods.getNickname(accounts[0]).call(), 3, 1000) || accounts[0].slice(0, 6) + "...") : (await retryOperation(() => contract.methods.getNickname(msg.sender).call(), 3, 1000) || msg.sender.slice(0, 6) + "...");
+                        const senderNickname = msg.sender === accounts[0] ? (await contract.methods.getNickname(accounts[0]).call() || accounts[0].slice(0, 6) + "...") : (await contract.methods.getNickname(msg.sender).call() || msg.sender.slice(0, 6) + "...");
                         return `
                             <div class="message ${msg.sender.toLowerCase() === accounts[0].toLowerCase() ? 'sent' : 'received'}">
                                 <div class="message-content">
@@ -837,7 +825,7 @@
                         updateGroupList();
                         updateButtons();
                         if (currentGroupId) loadMessages();
-                        retryOperation(() => contract.methods.getNickname(accounts[0]).call(), 3, 1000)
+                        contract.methods.getNickname(accounts[0]).call()
                             .then(nickname => {
                                 const nicknameDisplay = nickname || accounts[0].slice(0, 6) + "..." + accounts[0].slice(-4);
                                 document.getElementById('connectWalletButton').innerHTML = `> Connected: ${nicknameDisplay}`;

@@ -425,7 +425,7 @@
             <div class="header">> JaceChat</div>
             <div class="connect-section">
                 <button id="connectWalletButton">> Connect Wallet</button>
-                <div id="networkStatus" class="status">> Click to connect...</div>
+                <div id="networkStatus" class="status">> Detecting wallet...</div>
             </div>
             <div class="button-group">
                 <button id="createGroupButton" onclick="openCreateGroupModal()">> Create Group</button>
@@ -514,11 +514,7 @@
             chainId: 56,
             chainName: 'BNB Chain',
             nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
-            rpcUrls: [
-                'https://bsc-dataseed1.ninicoin.io/',
-                'https://bsc-dataseed2.defibit.io/',
-                'https://bsc-dataseed.binance.org/'
-            ],
+            rpcUrls: ['https://bsc-dataseed1.ninicoin.io/'],
             blockExplorerUrls: ['https://bscscan.com']
         };
         let currentGroupId = null;
@@ -548,25 +544,25 @@
                 connectButton.classList.add('loading');
                 status.innerText = "> Connecting to wallet...";
                 web3 = new Web3(provider);
-                accounts = await provider.request({ method: 'eth_requestAccounts' });
-                if (!accounts.length) throw new Error("Unlock or connect wallet");
-                const chainId = await web3.eth.getChainId();
+                const chainId = await retryOperation(() => web3.eth.getChainId(), 3, 1000);
                 if (chainId !== 56) {
                     status.innerText = "> Switching to BNB Chain...";
                     await switchNetwork();
                 }
+                accounts = await provider.request({ method: 'eth_requestAccounts' });
+                if (!accounts.length) throw new Error("Unlock or connect wallet");
                 contract = new web3.eth.Contract(contractABI, contractAddress);
-                const nickname = await contract.methods.getNickname(accounts[0]).call() || accounts[0].slice(0, 6) + "..." + accounts[0].slice(-4);
+                const nickname = await retryOperation(() => contract.methods.getNickname(accounts[0]).call(), 3, 1000) || accounts[0].slice(0, 6) + "..." + accounts[0].slice(-4);
                 connectButton.innerHTML = `> Connected: ${nickname} (${name})`;
                 status.innerText = "> Connected to BNB Chain";
-                updateButtons();
-                updateGroupList();
+                await updateButtons();
+                await updateGroupList();
                 setupEventListeners();
             } catch (error) {
                 console.error("Wallet connection error:", error);
-                let errorMessage = "> Connection failed: ";
+                let errorMessage = "> Failed to connect wallet: ";
                 if (error.message.includes("circuit breaker is open")) {
-                    errorMessage += "Circuit breaker is open. Try switching RPC (e.g., https://bsc-dataseed1.ninicoin.io/) or updating your wallet.";
+                    errorMessage += "Circuit breaker is open. Try switching to a different RPC (e.g., https://bsc-dataseed2.defibit.io/) or updating your wallet.";
                 } else if (error.code === 4001) {
                     errorMessage += "User rejected the request. Please approve in your wallet.";
                 } else {
@@ -606,42 +602,56 @@
             }
         }
 
-        function updateButtons() {
+        async function retryOperation(operation, maxRetries, delayMs) {
+            let lastError;
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    return await operation();
+                } catch (error) {
+                    lastError = error;
+                    console.warn(`Retry ${i + 1}/${maxRetries} failed: ${error.message}`);
+                    if (i < maxRetries - 1) {
+                        await new Promise(resolve => setTimeout(resolve, delayMs));
+                    }
+                }
+            }
+            throw lastError;
+        }
+
+        async function updateButtons() {
             if (!contract || !accounts) return;
-            contract.methods.getGroupIdByCreator(accounts[0]).call()
-                .then(result => {
-                    const createButton = document.getElementById('createGroupButton');
-                    if (result.hasGroup) {
-                        createButton.textContent = `> Group ID: ${result.groupId}`;
-                        createButton.classList.add('disabled');
-                        createButton.onclick = null;
-                    } else {
-                        createButton.textContent = '> Create Group';
-                        createButton.classList.remove('disabled');
-                        createButton.onclick = () => openCreateGroupModal();
-                    }
-                })
-                .catch(error => console.error(error));
-            contract.methods.getNickname(accounts[0]).call()
-                .then(nickname => {
-                    const nicknameButton = document.getElementById('setNicknameButton');
-                    if (nickname && nickname.trim() !== '') {
-                        nicknameButton.textContent = `> ${nickname}`;
-                        nicknameButton.classList.add('disabled');
-                        nicknameButton.onclick = null;
-                    } else {
-                        nicknameButton.textContent = '> Set Nickname';
-                        nicknameButton.classList.remove('disabled');
-                        nicknameButton.onclick = () => openSetNicknameModal();
-                    }
-                })
-                .catch(error => console.error(error));
+            try {
+                const result = await retryOperation(() => contract.methods.getGroupIdByCreator(accounts[0]).call(), 3, 1000);
+                const createButton = document.getElementById('createGroupButton');
+                if (result.hasGroup) {
+                    createButton.textContent = `> Group ID: ${result.groupId}`;
+                    createButton.classList.add('disabled');
+                    createButton.onclick = null;
+                } else {
+                    createButton.textContent = '> Create Group';
+                    createButton.classList.remove('disabled');
+                    createButton.onclick = () => openCreateGroupModal();
+                }
+                const nickname = await retryOperation(() => contract.methods.getNickname(accounts[0]).call(), 3, 1000);
+                const nicknameButton = document.getElementById('setNicknameButton');
+                if (nickname && nickname.trim() !== '') {
+                    nicknameButton.textContent = `> ${nickname}`;
+                    nicknameButton.classList.add('disabled');
+                    nicknameButton.onclick = null;
+                } else {
+                    nicknameButton.textContent = '> Set Nickname';
+                    nicknameButton.classList.remove('disabled');
+                    nicknameButton.onclick = () => openSetNicknameModal();
+                }
+            } catch (error) {
+                console.error("Error updating buttons:", error);
+            }
         }
 
         async function getTokenSymbol(tokenAddress) {
             try {
                 const tokenContract = new web3.eth.Contract(erc20ABI, tokenAddress);
-                const symbol = await tokenContract.methods.symbol().call();
+                const symbol = await retryOperation(() => tokenContract.methods.symbol().call(), 3, 1000);
                 return symbol || "Unknown";
             } catch (error) {
                 console.error("Error fetching token symbol:", error);
@@ -651,27 +661,31 @@
 
         async function updateGroupList() {
             if (!contract || !accounts) return;
-            const groupIds = await contract.methods.getUserJoinedGroups(accounts[0]).call();
-            const groupList = document.getElementById('groupList');
-            groupList.innerHTML = '';
-            for (let groupId of groupIds) {
-                const group = await contract.methods.groups(groupId).call();
-                const nickname = await contract.methods.getNickname(accounts[0]).call() || accounts[0].slice(0, 6) + "...";
-                const tokenSymbol = await getTokenSymbol(group.paymentToken);
-                const li = document.createElement('li');
-                li.className = 'user-item';
-                li.innerHTML = `
-                    <div class="group-header">
-                        <img src="https://woofingjace.com/images/jace.png" alt="Group">
-                        <div class="group-name">${group.name}</div>
-                    </div>
-                    <div class="status">> Members: ${group.memberCount} | You: ${nickname} | Fee: ${web3.utils.fromWei(group.joinFee, "ether")} ${tokenSymbol}</div>
-                    <div class="action-buttons">
-                        <button onclick="selectGroup(${groupId})">> Chat</button>
-                        <button onclick="leaveGroup(${groupId})">> Leave</button>
-                    </div>
-                `;
-                groupList.appendChild(li);
+            try {
+                const groupIds = await retryOperation(() => contract.methods.getUserJoinedGroups(accounts[0]).call(), 3, 1000);
+                const groupList = document.getElementById('groupList');
+                groupList.innerHTML = '';
+                for (let groupId of groupIds) {
+                    const group = await retryOperation(() => contract.methods.groups(groupId).call(), 3, 1000);
+                    const nickname = await retryOperation(() => contract.methods.getNickname(accounts[0]).call(), 3, 1000) || accounts[0].slice(0, 6) + "...";
+                    const tokenSymbol = await getTokenSymbol(group.paymentToken);
+                    const li = document.createElement('li');
+                    li.className = 'user-item';
+                    li.innerHTML = `
+                        <div class="group-header">
+                            <img src="https://woofingjace.com/images/jace.png" alt="Group">
+                            <div class="group-name">${group.name}</div>
+                        </div>
+                        <div class="status">> Members: ${group.memberCount} | You: ${nickname} | Fee: ${web3.utils.fromWei(group.joinFee, "ether")} ${tokenSymbol}</div>
+                        <div class="action-buttons">
+                            <button onclick="selectGroup(${groupId})">> Chat</button>
+                            <button onclick="leaveGroup(${groupId})">> Leave</button>
+                        </div>
+                    `;
+                    groupList.appendChild(li);
+                }
+            } catch (error) {
+                console.error("Error updating group list:", error);
             }
         }
 
@@ -693,8 +707,8 @@
             try {
                 await contract.methods.createGroup(name, paymentToken, web3.utils.toWei(joinFee, "ether")).send({ from: accounts[0] });
                 document.getElementById('createStatus').innerText = "> Group created!";
-                updateGroupList();
-                updateButtons();
+                await updateGroupList();
+                await updateButtons();
                 closeModal('createGroupModal');
             } catch (error) {
                 document.getElementById('createStatus').innerText = "> Failed: " + error.message;
@@ -705,7 +719,7 @@
             if (!contract || !accounts) return alert("Connect wallet first!");
             const groupId = document.getElementById('groupIdInput').value;
             try {
-                const group = await contract.methods.groups(groupId).call();
+                const group = await retryOperation(() => contract.methods.groups(groupId).call(), 3, 1000);
                 const joinFeeWei = group.joinFee;
                 const joinFeeEther = web3.utils.fromWei(joinFeeWei, "ether");
                 const tokenSymbol = await getTokenSymbol(group.paymentToken);
@@ -714,7 +728,7 @@
                 await tokenContract.methods.approve(contractAddress, joinFeeWei).send({ from: accounts[0] });
                 await contract.methods.joinGroup(groupId).send({ from: accounts[0] });
                 document.getElementById('joinStatus').innerText = "> Joined!";
-                updateGroupList();
+                await updateGroupList();
                 if (currentGroupId === parseInt(groupId)) loadMessages();
                 closeModal('joinGroupModal');
             } catch (error) {
@@ -727,7 +741,7 @@
             try {
                 await contract.methods.leaveGroup(groupId).send({ from: accounts[0] });
                 alert("Left group!");
-                updateGroupList();
+                await updateGroupList();
                 if (currentGroupId === groupId) {
                     currentGroupId = null;
                     document.getElementById('messageList').innerHTML = '';
@@ -741,23 +755,27 @@
 
         async function selectGroup(groupId) {
             currentGroupId = parseInt(groupId);
-            const group = await contract.methods.groups(currentGroupId).call();
-            document.getElementById('chatTitle').innerText = `> ${group.name}`;
-            const messages = await contract.methods.getMessages(currentGroupId, 0, 100).call();
-            document.getElementById('messageCount').innerText = `> ${messages.length} messages`;
-            loadMessages();
+            try {
+                const group = await retryOperation(() => contract.methods.groups(currentGroupId).call(), 3, 1000);
+                document.getElementById('chatTitle').innerText = `> ${group.name}`;
+                const messages = await retryOperation(() => contract.methods.getMessages(currentGroupId, 0, 100).call(), 3, 1000);
+                document.getElementById('messageCount').innerText = `> ${messages.length} messages`;
+                await loadMessages();
+            } catch (error) {
+                alert("Failed to select group: " + error.message);
+            }
         }
 
         async function loadMessages() {
             if (!contract || !accounts || !currentGroupId) return alert("Select a group first!");
             try {
-                const joinedGroups = await contract.methods.getUserJoinedGroups(accounts[0]).call();
+                const joinedGroups = await retryOperation(() => contract.methods.getUserJoinedGroups(accounts[0]).call(), 3, 1000);
                 if (!joinedGroups.includes(currentGroupId.toString())) return alert("You are not a member!");
-                const messages = await contract.methods.getMessages(currentGroupId, 0, 100).call();
+                const messages = await retryOperation(() => contract.methods.getMessages(currentGroupId, 0, 100).call(), 3, 1000);
                 const messageList = document.getElementById('messageList');
                 if (messages.length) {
                     const messageHTML = await Promise.all(messages.map(async msg => {
-                        const senderNickname = msg.sender === accounts[0] ? (await contract.methods.getNickname(accounts[0]).call() || accounts[0].slice(0, 6) + "...") : (await contract.methods.getNickname(msg.sender).call() || msg.sender.slice(0, 6) + "...");
+                        const senderNickname = msg.sender === accounts[0] ? (await retryOperation(() => contract.methods.getNickname(accounts[0]).call(), 3, 1000) || accounts[0].slice(0, 6) + "...") : (await retryOperation(() => contract.methods.getNickname(msg.sender).call(), 3, 1000) || msg.sender.slice(0, 6) + "...");
                         return `
                             <div class="message ${msg.sender.toLowerCase() === accounts[0].toLowerCase() ? 'sent' : 'received'}">
                                 <div class="message-content">
@@ -774,7 +792,7 @@
                 }
                 messageList.scrollTop = messageList.scrollHeight;
             } catch (error) {
-                alert("Failed: " + error.message);
+                alert("Failed to load messages: " + error.message);
             }
         }
 
@@ -785,9 +803,9 @@
             try {
                 await contract.methods.sendMessage(currentGroupId, content).send({ from: accounts[0] });
                 document.getElementById('messageInput').value = '';
-                loadMessages();
+                await loadMessages();
             } catch (error) {
-                alert("Failed: " + error.message);
+                alert("Failed to send message: " + error.message);
             }
         }
 
@@ -797,9 +815,9 @@
             try {
                 await contract.methods.setNickname(nickname).send({ from: accounts[0] });
                 document.getElementById('nicknameStatus').innerText = "> Nickname set!";
-                updateGroupList();
-                updateButtons();
-                if (currentGroupId) loadMessages();
+                await updateGroupList();
+                await updateButtons();
+                if (currentGroupId) await loadMessages();
                 const nicknameDisplay = nickname || accounts[0].slice(0, 6) + "..." + accounts[0].slice(-4);
                 document.getElementById('connectWalletButton').innerHTML = `> Connected: ${nicknameDisplay}`;
                 closeModal('setNicknameModal');
@@ -819,7 +837,7 @@
                         updateGroupList();
                         updateButtons();
                         if (currentGroupId) loadMessages();
-                        contract.methods.getNickname(accounts[0]).call()
+                        retryOperation(() => contract.methods.getNickname(accounts[0]).call(), 3, 1000)
                             .then(nickname => {
                                 const nicknameDisplay = nickname || accounts[0].slice(0, 6) + "..." + accounts[0].slice(-4);
                                 document.getElementById('connectWalletButton').innerHTML = `> Connected: ${nicknameDisplay}`;

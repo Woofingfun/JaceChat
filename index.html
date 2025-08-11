@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JaceChat</title>
+    <link rel="icon" href="https://woofingjace.com/images/jace.png" type="image/x-icon">
+    <link href='https://fonts.googleapis.com/css2?family=VT323&display=swap' rel='stylesheet'>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'VT323', monospace;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #00ffcc;
+            overflow-x: hidden;
+        }
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            height: 90vh;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #00ffcc;
+            box-shadow: 0 0 20px #00ffcc;
+            display: flex;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px;
+        }
+        .sidebar {
+            width: 20%;
+            background: rgba(0, 0, 0, 0.8);
+            border-right: 2px solid #ff007f;
+            overflow-y: auto;
+        }
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: #ff007f;
+            color: #00ffcc;
+            padding: 8px 12px;
+            text-align: left;
+            font-size: 2em;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            border-radius: 10px;
+            margin: 10px;
+            text-shadow: 0 0 10px #00ffcc;
+            box-shadow: 0 0 15px #ff007f;
+        }
+        .connect-section {
+            padding: 10px;
+        }
+        .connect-section button {
+            padding: 10px;
+            background: #ff007f;
+            color: #00ffcc;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.2em;
+            width: 100%;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-family: 'VT323', monospace;
+            box-shadow: 0 0 10px #ff007f;
+            transition: all 0.3s ease;
+        }
+        .connect-section button:hover {
+            background: #00ffcc;
+            color: #ff007f;
+            box-shadow: 0 0 15px #00ffcc;
+        }
+        .connect-section button.loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+        .button-group {
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .button-group button {
+            padding: 10px;
+            background: #ff007f;
+            color: #00ffcc;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.2em;
+            width: 100%;
+            text-align: left;
+            font-family: 'VT323', monospace;
+            box-shadow: 0 0 10px #ff007f;
+            transition: all 0.3s ease;
+        }
+        .button-group button:hover {
+            background: #00ffcc;
+            color: #ff007f;
+            box-shadow: 0 0 15px #00ffcc;
+        }
+        .button-group button.disabled {
+            background: #808080;
+            cursor: not-allowed;
+            opacity: 0.7;
+            box-shadow: none;
+        }
+        .user-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .user-item {
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            border-bottom: 2px solid #ff007f;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .user-item:hover {
+            background: rgba(255, 0, 127, 0.2);
+            transform: scale(1.02);
+        }
+        .user-item img {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+            object-fit: contain;
+            border: 1px solid #00ffcc;
+        }
+        .user-item .group-header {
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+        .user-item .group-name {
+            font-weight: bold;
+            color: #00ffcc;
+            font-size: 1.2em;
+            margin-right: auto;
+            text-shadow: 0 0 5px #00ffcc;
+        }
+        .user-item .status {
+            font-size: 0.9em;
+            color: #ff007f;
+            margin-top: 5px;
+            width: 100%;
+            text-shadow: 0 0 5px #ff007f;
+        }
+        .user-item .action-buttons {
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+            width: 100%;
+            justify-content: flex-end;
+        }
+        .user-item button {
+            padding: 5px 10px;
+            background: #ff007f;
+            color: #00ffcc;
+            border: none;
+            border-radius: 5px;
+            font-size: 0.9em;
+            cursor: pointer;
+            font-family: 'VT323', monospace;
+            box-shadow: 0 0 10px #ff007f;
+            transition: all 0.3s ease;
+        }
+        .user-item button:hover {
+            background: #00ffcc;
+            color: #ff007f;
+            box-shadow: 0 0 15px #00ffcc;
+        }
+        .chat-header {
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.8);
+            border-bottom: 2px solid #ff007f;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .chat-header .info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .chat-header .name {
+            font-weight: bold;
+            color: #00ffcc;
+            background: rgba(255, 0, 127, 0.3);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 1em;
+            text-shadow: 0 0 5px #00ffcc;
+        }
+        .chat-header .badge {
+            background: rgba(255, 0, 127, 0.3);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 1em;
+            color: #00ffcc;
+            text-shadow: 0 0 5px #00ffcc;
+        }
+        .chat-header .refresh-btn {
+            padding: 6px 16px;
+            background: #ff007f;
+            color: #00ffcc;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1em;
+            font-family: 'VT323', monospace;
+            box-shadow: 0 0 10px #ff007f;
+            transition: all 0.3s ease;
+        }
+        .chat-header .refresh-btn:hover {
+            background: #00ffcc;
+            color: #ff007f;
+            box-shadow: 0 0 15px #00ffcc;
+        }
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.7);
+        }
+        .message {
+            margin: 10px 0;
+            display: flex;
+            align-items: flex-start;
+        }
+        .message.sent {
+            justify-content: flex-end;
+        }
+        .message.received {
+            justify-content: flex-start;
+        }
+        .message-content {
+            max-width: 60%;
+            padding: 10px;
+            border-radius: 10px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            border: 2px solid #ff007f;
+            box-shadow: 0 0 10px #ff007f;
+        }
+        .message.sent .message-content {
+            background: rgba(255, 0, 127, 0.3);
+            color: #00ffcc;
+        }
+        .message.received .message-content {
+            background: rgba(0, 255, 204, 0.3);
+            color: #ff007f;
+            box-shadow: 0 0 10px #00ffcc;
+        }
+        .message:nth-child(even) .message-content {
+            background: rgba(0, 0, 0, 0.5);
+        }
+        .message-sender {
+            font-size: 0.8em;
+            color: #00ffcc;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            text-shadow: 0 0 5px #00ffcc;
+        }
+        .message-text {
+            word-wrap: break-word;
+        }
+        .message-timestamp {
+            font-size: 0.7em;
+            color: #ff007f;
+            align-self: flex-end;
+            margin-top: 5px;
+            text-shadow: 0 0 5px #ff007f;
+        }
+        .input-area {
+            display: flex;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.8);
+            border-top: 2px solid #ff007f;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 6px 12px;
+            background: rgba(255, 0, 127, 0.3);
+            color: #00ffcc;
+            border: none;
+            border-radius: 20px;
+            margin-right: 10px;
+            outline: none;
+            font-size: 1em;
+            font-family: 'VT323', monospace;
+            box-shadow: 0 0 10px #ff007f;
+        }
+        .input-area .send-btn {
+            padding: 6px 16px;
+            background: #ff007f;
+            color: #00ffcc;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1em;
+            font-family: 'VT323', monospace;
+            box-shadow: 0 0 10px #ff007f;
+            transition: all 0.3s ease;
+        }
+        .input-area .send-btn:hover {
+            background: #00ffcc;
+            color: #ff007f;
+            box-shadow: 0 0 15px #00ffcc;
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            border: 2px solid #00ffcc;
+            color: #00ffcc;
+            box-shadow: 0 0 15px #00ffcc;
+        }
+        .modal-content input {
+            width: 100%;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ff007f;
+            border-radius: 5px;
+            background: rgba(255, 0, 127, 0.3);
+            color: #00ffcc;
+            font-family: 'VT323', monospace;
+        }
+        .modal-content button {
+            padding: 10px 20px;
+            background: #ff007f;
+            color: #00ffcc;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'VT323', monospace;
+            box-shadow: 0 0 10px #ff007f;
+            transition: all 0.3s ease;
+        }
+        .modal-content button:hover {
+            background: #00ffcc;
+            color: #ff007f;
+            box-shadow: 0 0 15px #00ffcc;
+        }
+        .status {
+            margin-top: 10px;
+            font-size: 1em;
+            color: #ff007f;
+            text-shadow: 0 0 5px #ff007f;
+        }
+        @media (max-width: 600px) {
+            .container { height: 100vh; border-radius: 0; box-shadow: none; margin: 0; }
+            .sidebar { width: 35%; }
+            .chat-area { flex: 1; }
+            .header { font-size: 1.5em; }
+            .message-content { max-width: 80%; }
+            .connect-section button, .button-group button, .chat-header .refresh-btn, .input-area .send-btn, .modal-content button {
+                font-size: 1em;
+            }
+            .user-item .group-name { font-size: 1em; }
+            .user-item .status { font-size: 0.8em; }
+            .modal-content { max-width: 90%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="header">JaceChat</div>
+            <div class="connect-section">
+                <button id="connectWalletButton">Connect Wallet</button>
+                <div id="networkStatus" class="status">Click to connect...</div>
+            </div>
+            <div class="button-group">
+                <button id="createGroupButton" onclick="openCreateGroupModal()">Create Group</button>
+                <button onclick="joinGroup()">Join Group</button>
+                <button id="setNicknameButton" onclick="openSetNicknameModal()">Set Nickname</button>
+            </div>
+            <ul class="user-list" id="groupList"></ul>
+        </div>
+        <div class="chat-area">
+            <div class="chat-header">
+                <div class="info">
+                    <div class="name" id="chatTitle">Select a Group</div>
+                    <div class="badge" id="messageCount">0 messages</div>
+                </div>
+                <button class="refresh-btn" onclick="loadMessages()">Refresh</button>
+            </div>
+            <div class="messages" id="messageList"></div>
+            <div class="input-area">
+                <input type="text" id="messageInput" placeholder="Jace something...">
+                <button class="send-btn" onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+    <div class="modal" id="createGroupModal">
+        <div class="modal-content">
+            <h2>Create Group</h2>
+            <input type="text" id="groupName" placeholder="Group Name (max 20 chars)">
+            <input type="text" id="paymentTokenInput" placeholder="Token Address (0x...)">
+            <input type="text" id="joinFee" placeholder="Join Fee (min 10)">
+            <button onclick="createGroup()">Create</button>
+            <button onclick="closeModal('createGroupModal')">Cancel</button>
+            <div class="status" id="createStatus"></div>
+        </div>
+    </div>
+    <div class="modal" id="joinGroupModal">
+        <div class="modal-content">
+            <h2>Join Group</h2>
+            <input type="text" id="groupIdInput" placeholder="Group ID">
+            <div class="status" id="joinFeeInfo"></div>
+            <button onclick="joinGroupConfirm()">Join</button>
+            <button onclick="closeModal('joinGroupModal')">Cancel</button>
+            <div class="status" id="joinStatus"></div>
+        </div>
+    </div>
+    <div class="modal" id="setNicknameModal">
+        <div class="modal-content">
+            <h2>Set Nickname</h2>
+            <input type="text" id="nicknameInput" placeholder="Nickname (max 12 chars)">
+            <button onclick="setNickname()">Save</button>
+            <button onclick="closeModal('setNicknameModal')">Cancel</button>
+            <div class="status" id="nicknameStatus"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.0/dist/web3.min.js"></script>
+    <script>
+        let web3, accounts, contract;
+        const contractAddress = "0x86E972d28929B2Ba3eA14e141D92Ffac41Aed270";
+        const contractABI = [{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"groupId","type":"uint256"},{"indexed":false,"internalType":"string","name":"name","type":"string"},{"indexed":true,"internalType":"address","name":"creator","type":"address"}],"name":"GroupCreated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"groupId","type":"uint256"},{"indexed":true,"internalType":"address","name":"member","type":"address"}],"name":"MemberJoined","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"groupId","type":"uint256"},{"indexed":true,"internalType":"address","name":"member","type":"address"}],"name":"MemberLeft","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"groupId","type":"uint256"},{"indexed":true,"internalType":"address","name":"sender","type":"address"},{"indexed":false,"internalType":"string","name":"content","type":"string"}],"name":"MessageSent","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"string","name":"newNickname","type":"string"},{"indexed":false,"internalType":"bool","name":"isInitialSet","type":"bool"}],"name":"NicknameUpdated","type":"event"},{"inputs":[{"internalType":"string","name":"name","type":"string"},{"internalType":"address","name":"paymentToken","type":"address"},{"internalType":"uint256","name":"joinFee","type":"uint256"}],"name":"createGroup","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"groupId","type":"uint256"}],"name":"getGroupMembersCount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"groupId","type":"uint256"},{"internalType":"uint256","name":"startIndex","type":"uint256"},{"internalType":"uint256","name":"count","type":"uint256"}],"name":"getMessages","outputs":[{"components":[{"internalType":"address","name":"sender","type":"address"},{"internalType":"string","name":"content","type":"string"},{"internalType":"uint256","name":"timestamp","type":"uint256"}],"internalType":"struct WoofChat.Message[]","name":"","type":"tuple[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"getNickname","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"creator","type":"address"}],"name":"getGroupIdByCreator","outputs":[{"internalType":"bool","name":"hasGroup","type":"bool"},{"internalType":"uint256","name":"groupId","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"getUserJoinedGroups","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"nickname","type":"string"}],"name":"isNicknameAvailable","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"groupId","type":"uint256"}],"name":"joinGroup","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"groupId","type":"uint256"}],"name":"leaveGroup","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"groupId","type":"uint256"},{"internalType":"string","name":"content","type":"string"}],"name":"sendMessage","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"string","name":"nickname","type":"string"}],"name":"setNickname","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"tokenAddress","type":"address"}],"name":"withdrawAllTokens","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"withdrawBONE","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"groups","outputs":[{"internalType":"string","name":"name","type":"string"},{"internalType":"address","name":"creator","type":"address"},{"internalType":"address","name":"paymentToken","type":"address"},{"internalType":"uint256","name":"joinFee","type":"uint256"},{"internalType":"uint256","name":"memberCount","type":"uint256"}],"stateMutability":"view","type":"function"},{"stateMutability":"payable","type":"receive"}];
+        const bnbChain = {
+            chainId: 56,
+            chainName: 'BNB Chain',
+            nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+            rpcUrls: ['https://bsc-dataseed.binance.org/'],
+            blockExplorerUrls: ['https://bscscan.com']
+        };
+        const erc20ABI = [
+            {"constant":true,"inputs":[],"name":"symbol","outputs":[{"name":"","type":"string"}],"stateMutability":"view","type":"function"}
+        ];
+        let currentGroupId = null;
+
+        async function connectWallet() {
+            const status = document.getElementById('networkStatus');
+            const connectButton = document.getElementById('connectWalletButton');
+            try {
+                if (!window.ethereum) {
+                    status.innerHTML = 'No wallet detected. Please install <a href="https://metamask.io" target="_blank">MetaMask</a> and run via a local server (e.g., "npx serve").';
+                    throw new Error("No wallet detected");
+                }
+                connectButton.classList.add('loading');
+                status.innerText = "Connecting...";
+                web3 = new Web3(window.ethereum);
+                accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                if (!accounts.length) throw new Error("Unlock or connect wallet.");
+                const chainId = await web3.eth.getChainId();
+                if (chainId !== 56) {
+                    try {
+                        await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: "0x38" }] });
+                    } catch (switchError) {
+                        if (switchError.code === 4902) await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [bnbChain] });
+                        else throw switchError;
+                    }
+                }
+                contract = new web3.eth.Contract(contractABI, contractAddress);
+                const nickname = await contract.methods.getNickname(accounts[0]).call() || accounts[0].slice(0, 6) + "..." + accounts[0].slice(-4);
+                connectButton.innerHTML = `Connected: ${nickname}`;
+                status.innerText = "Connected to BNB Chain";
+                updateButtons();
+                updateGroupList();
+                setupEventListeners();
+            } catch (error) {
+                console.error(error);
+                status.innerText = "Failed: " + error.message;
+            } finally {
+                connectButton.classList.remove('loading');
+            }
+        }
+
+        function updateButtons() {
+            if (!contract || !accounts) return;
+            contract.methods.getGroupIdByCreator(accounts[0]).call()
+                .then(result => {
+                    const createButton = document.getElementById('createGroupButton');
+                    if (result.hasGroup) {
+                        createButton.textContent = `Group ID: ${result.groupId}`;
+                        createButton.classList.add('disabled');
+                        createButton.onclick = null;
+                    } else {
+                        createButton.textContent = 'Create Group';
+                        createButton.classList.remove('disabled');
+                        createButton.onclick = () => openCreateGroupModal();
+                    }
+                })
+                .catch(error => console.error(error));
+            contract.methods.getNickname(accounts[0]).call()
+                .then(nickname => {
+                    const nicknameButton = document.getElementById('setNicknameButton');
+                    if (nickname && nickname.trim() !== '') {
+                        nicknameButton.textContent = nickname;
+                        nicknameButton.classList.add('disabled');
+                        nicknameButton.onclick = null;
+                    } else {
+                        nicknameButton.textContent = 'Set Nickname';
+                        nicknameButton.classList.remove('disabled');
+                        nicknameButton.onclick = () => openSetNicknameModal();
+                    }
+                })
+                .catch(error => console.error(error));
+        }
+
+        async function getTokenSymbol(tokenAddress) {
+            try {
+                const tokenContract = new web3.eth.Contract(erc20ABI, tokenAddress);
+                const symbol = await tokenContract.methods.symbol().call();
+                return symbol || "Unknown";
+            } catch (error) {
+                console.error("Error fetching token symbol:", error);
+                return "Unknown";
+            }
+        }
+
+        async function updateGroupList() {
+            if (!contract || !accounts) return;
+            const groupIds = await contract.methods.getUserJoinedGroups(accounts[0]).call();
+            const groupList = document.getElementById('groupList');
+            groupList.innerHTML = '';
+            for (let groupId of groupIds) {
+                const group = await contract.methods.groups(groupId).call();
+                const nickname = await contract.methods.getNickname(accounts[0]).call() || accounts[0].slice(0, 6) + "...";
+                const tokenSymbol = await getTokenSymbol(group.paymentToken);
+                const li = document.createElement('li');
+                li.className = 'user-item';
+                li.innerHTML = `
+                    <div class="group-header">
+                        <img src="https://woofingjace.com/images/jace.png" alt="Group">
+                        <div class="group-name">${group.name}</div>
+                    </div>
+                    <div class="status">Members: ${group.memberCount} | You: ${nickname} | Fee: ${web3.utils.fromWei(group.joinFee, "ether")} ${tokenSymbol}</div>
+                    <div class="action-buttons">
+                        <button onclick="selectGroup(${groupId})">Chat</button>
+                        <button onclick="leaveGroup(${groupId})">Leave</button>
+                    </div>
+                `;
+                groupList.appendChild(li);
+            }
+        }
+
+        function openCreateGroupModal() { document.getElementById('createGroupModal').style.display = 'flex'; }
+        function joinGroup() { document.getElementById('joinGroupModal').style.display = 'flex'; }
+        function openSetNicknameModal() { document.getElementById('setNicknameModal').style.display = 'flex'; }
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+            document.querySelectorAll('.status').forEach(s => s.innerText = '');
+        }
+
+        async function createGroup() {
+            if (!contract || !accounts) return alert("Connect wallet first!");
+            const name = document.getElementById('groupName').value;
+            const paymentToken = document.getElementById('paymentTokenInput').value;
+            const joinFee = document.getElementById('joinFee').value;
+            if (!web3.utils.isAddress(paymentToken)) return alert("Invalid token address!");
+            if (!name || !joinFee) return alert("Please fill all fields!");
+            try {
+                await contract.methods.createGroup(name, paymentToken, web3.utils.toWei(joinFee, "ether")).send({ from: accounts[0] });
+                document.getElementById('createStatus').innerText = "Group created!";
+                updateGroupList();
+                updateButtons();
+                closeModal('createGroupModal');
+            } catch (error) {
+                document.getElementById('createStatus').innerText = "Failed: " + error.message;
+            }
+        }
+
+        async function joinGroupConfirm() {
+            if (!contract || !accounts) return alert("Connect wallet first!");
+            const groupId = document.getElementById('groupIdInput').value;
+            try {
+                const group = await contract.methods.groups(groupId).call();
+                const joinFeeWei = group.joinFee;
+                const joinFeeEther = web3.utils.fromWei(joinFeeWei, "ether");
+                const tokenSymbol = await getTokenSymbol(group.paymentToken);
+                document.getElementById('joinFeeInfo').innerText = `Join fee: ${joinFeeEther} ${tokenSymbol}`;
+                const tokenContract = new web3.eth.Contract([{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"}], group.paymentToken);
+                await tokenContract.methods.approve(contractAddress, joinFeeWei).send({ from: accounts[0] });
+                await contract.methods.joinGroup(groupId).send({ from: accounts[0] });
+                document.getElementById('joinStatus').innerText = "Joined!";
+                updateGroupList();
+                if (currentGroupId === parseInt(groupId)) loadMessages();
+                closeModal('joinGroupModal');
+            } catch (error) {
+                document.getElementById('joinStatus').innerText = "Failed: " + error.message;
+            }
+        }
+
+        async function leaveGroup(groupId) {
+            if (!contract || !accounts) return alert("Connect wallet first!");
+            try {
+                await contract.methods.leaveGroup(groupId).send({ from: accounts[0] });
+                alert("Left group!");
+                updateGroupList();
+                if (currentGroupId === groupId) {
+                    currentGroupId = null;
+                    document.getElementById('messageList').innerHTML = '';
+                    document.getElementById('chatTitle').innerText = 'Select a Group';
+                    document.getElementById('messageCount').innerText = '0 messages';
+                }
+            } catch (error) {
+                alert("Failed: " + error.message);
+            }
+        }
+
+        async function selectGroup(groupId) {
+            currentGroupId = parseInt(groupId);
+            const group = await contract.methods.groups(currentGroupId).call();
+            document.getElementById('chatTitle').innerText = group.name;
+            const messages = await contract.methods.getMessages(currentGroupId, 0, 100).call();
+            document.getElementById('messageCount').innerText = `${messages.length} messages`;
+            loadMessages();
+        }
+
+        async function loadMessages() {
+            if (!contract || !accounts || !currentGroupId) return alert("Select a group first!");
+            try {
+                const joinedGroups = await contract.methods.getUserJoinedGroups(accounts[0]).call();
+                if (!joinedGroups.includes(currentGroupId.toString())) return alert("You are not a member!");
+                const messages = await contract.methods.getMessages(currentGroupId, 0, 100).call();
+                const messageList = document.getElementById('messageList');
+                if (messages.length) {
+                    const messageHTML = await Promise.all(messages.map(async msg => {
+                        const senderNickname = msg.sender === accounts[0] ? (await contract.methods.getNickname(accounts[0]).call() || accounts[0].slice(0, 6) + "...") : (await contract.methods.getNickname(msg.sender).call() || msg.sender.slice(0, 6) + "...");
+                        return `
+                            <div class="message ${msg.sender.toLowerCase() === accounts[0].toLowerCase() ? 'sent' : 'received'}">
+                                <div class="message-content">
+                                    <div class="message-sender">${senderNickname}</div>
+                                    <div class="message-text">${msg.content}</div>
+                                    <div class="message-timestamp">${new Date(msg.timestamp * 1000).toLocaleTimeString()}</div>
+                                </div>
+                            </div>
+                        `;
+                    }));
+                    messageList.innerHTML = messageHTML.join('');
+                } else {
+                    messageList.innerHTML = '<div style="text-align: center; color: #ff007f;">No messages yet!</div>';
+                }
+                messageList.scrollTop = messageList.scrollHeight;
+            } catch (error) {
+                alert("Failed: " + error.message);
+            }
+        }
+
+        async function sendMessage() {
+            if (!contract || !accounts || !currentGroupId) return alert("Select a group first!");
+            const content = document.getElementById('messageInput').value;
+            if (!content) return;
+            try {
+                await contract.methods.sendMessage(currentGroupId, content).send({ from: accounts[0] });
+                document.getElementById('messageInput').value = '';
+                loadMessages();
+            } catch (error) {
+                alert("Failed: " + error.message);
+            }
+        }
+
+        async function setNickname() {
+            if (!contract || !accounts) return alert("Connect wallet first!");
+            const nickname = document.getElementById('nicknameInput').value;
+            try {
+                await contract.methods.setNickname(nickname).send({ from: accounts[0] });
+                document.getElementById('nicknameStatus').innerText = "Nickname set!";
+                updateGroupList();
+                updateButtons();
+                if (currentGroupId) loadMessages();
+                const connectButton = document.getElementById('connectWalletButton');
+                connectButton.innerHTML = `Connected: ${nickname || accounts[0].slice(0, 6) + "..." + accounts[0].slice(-4)}`;
+                closeModal('setNicknameModal');
+            } catch (error) {
+                document.getElementById('nicknameStatus').innerText = "Failed: " + error.message;
+            }
+        }
+
+        function setupEventListeners() {
+            if (!contract) return;
+            contract.events.allEvents({ fromBlock: 'latest' }, (error, event) => {
+                if (!error) {
+                    if (event.event === 'MessageSent' && currentGroupId === parseInt(event.returnValues.groupId)) loadMessages();
+                    if (event.event === 'MemberJoined' && accounts[0].toLowerCase() === event.returnValues.member.toLowerCase()) updateGroupList();
+                    if (event.event === 'MemberLeft' && accounts[0].toLowerCase() === event.returnValues.member.toLowerCase()) updateGroupList();
+                    if (event.event === 'NicknameUpdated') {
+                        updateGroupList();
+                        updateButtons();
+                        if (currentGroupId) loadMessages();
+                    }
+                }
+            });
+        }
+
+        document.getElementById('connectWalletButton').addEventListener('click', connectWallet);
+
+        window.ethereum?.on('chainChanged', (chainId) => {
+            if (parseInt(chainId, 16) !== 56) {
+                document.getElementById('networkStatus').innerText = "Switched to wrong network. Please reconnect to BNB Chain.";
+                web3 = null;
+                contract = null;
+                accounts = null;
+                document.getElementById('connectWalletButton').textContent = 'Connect Wallet';
+            } else {
+                connectWallet();
+            }
+        });
+
+        window.ethereum?.on('accountsChanged', (newAccounts) => {
+            if (newAccounts.length) {
+                connectWallet();
+            } else {
+                document.getElementById('networkStatus').innerText = "Wallet disconnected. Please reconnect.";
+                web3 = null;
+                contract = null;
+                accounts = null;
+                document.getElementById('connectWalletButton').textContent = 'Connect Wallet';
+            }
+        });
+
+        window.addEventListener('load', () => {
+            if (!window.location.protocol.startsWith('http')) {
+                document.getElementById('networkStatus').innerHTML = 'Please run this page via a local server (e.g., "npx serve") to connect MetaMask.';
+            } else if (!window.ethereum) {
+                document.getElementById('networkStatus').innerHTML = 'No wallet detected. Please install <a href="https://metamask.io" target="_blank">MetaMask</a>.';
+            }
+        });
+    </script>
+</body>
+</html>

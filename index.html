@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JaceChat</title>
     <link rel="icon" href="https://woofingjace.com/images/jace.png" type="image/x-icon">
-    <link href='https://fonts.googleapis.com/css2?family=VT323&display=swap' rel='stylesheet'>
     <style>
         body {
             display: flex;
@@ -13,18 +12,30 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            font-family: 'VT323', monospace;
-            background: linear-gradient(135deg, #1a1a2e, #16213e);
-            color: #00ffcc;
+            font-family: 'Courier New', monospace;
+            background: #0D0208;
+            color: #00FF00;
             overflow-x: hidden;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 255, 0, 0.05) 2px, rgba(0, 255, 0, 0.05) 4px);
+            pointer-events: none;
+            z-index: -1;
         }
         .container {
             width: 100%;
             max-width: 1000px;
             height: 90vh;
-            background: rgba(0, 0, 0, 0.7);
-            border: 2px solid #00ffcc;
-            box-shadow: 0 0 20px #00ffcc;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00FF00;
+            box-shadow: 0 0 20px #00FF41;
             display: flex;
             border-radius: 10px;
             overflow: hidden;
@@ -32,8 +43,8 @@
         }
         .sidebar {
             width: 20%;
-            background: rgba(0, 0, 0, 0.8);
-            border-right: 2px solid #ff007f;
+            background: rgba(0, 0, 0, 0.95);
+            border-right: 2px solid #00FF41;
             overflow-y: auto;
         }
         .chat-area {
@@ -42,8 +53,8 @@
             flex-direction: column;
         }
         .header {
-            background: #ff007f;
-            color: #00ffcc;
+            background: #00FF41;
+            color: #0D0208;
             padding: 8px 12px;
             text-align: left;
             font-size: 2em;
@@ -52,16 +63,17 @@
             align-items: center;
             border-radius: 10px;
             margin: 10px;
-            text-shadow: 0 0 10px #00ffcc;
-            box-shadow: 0 0 15px #ff007f;
+            text-shadow: 0 0 10px #00FF00;
+            box-shadow: 0 0 15px #00FF41;
+            animation: flicker 1.5s infinite alternate;
         }
         .connect-section {
             padding: 10px;
         }
         .connect-section button {
             padding: 10px;
-            background: #ff007f;
-            color: #00ffcc;
+            background: #00FF41;
+            color: #0D0208;
             border: none;
             border-radius: 10px;
             cursor: pointer;
@@ -72,18 +84,20 @@
             display: flex;
             align-items: center;
             gap: 4px;
-            font-family: 'VT323', monospace;
-            box-shadow: 0 0 10px #ff007f;
+            font-family: 'Courier New', monospace;
+            box-shadow: 0 0 10px #00FF41;
             transition: all 0.3s ease;
+            animation: flicker 1.5s infinite alternate;
         }
         .connect-section button:hover {
-            background: #00ffcc;
-            color: #ff007f;
-            box-shadow: 0 0 15px #00ffcc;
+            background: #00FF00;
+            color: #0D0208;
+            box-shadow: 0 0 15px #00FF00;
         }
         .connect-section button.loading {
             opacity: 0.7;
             pointer-events: none;
+            animation: none;
         }
         .button-group {
             padding: 10px;
@@ -93,8 +107,8 @@
         }
         .button-group button {
             padding: 10px;
-            background: #ff007f;
-            color: #00ffcc;
+            background: #00FF41;
+            color: #0D0208;
             border: none;
             border-radius: 10px;
             cursor: pointer;
@@ -102,20 +116,22 @@
             font-size: 1.2em;
             width: 100%;
             text-align: left;
-            font-family: 'VT323', monospace;
-            box-shadow: 0 0 10px #ff007f;
+            font-family: 'Courier New', monospace;
+            box-shadow: 0 0 10px #00FF41;
             transition: all 0.3s ease;
+            animation: flicker 1.5s infinite alternate;
         }
         .button-group button:hover {
-            background: #00ffcc;
-            color: #ff007f;
-            box-shadow: 0 0 15px #00ffcc;
+            background: #00FF00;
+            color: #0D0208;
+            box-shadow: 0 0 15px #00FF00;
         }
         .button-group button.disabled {
-            background: #808080;
+            background: #4a4f4a;
             cursor: not-allowed;
             opacity: 0.7;
             box-shadow: none;
+            animation: none;
         }
         .user-list {
             list-style: none;
@@ -127,12 +143,12 @@
             display: flex;
             flex-direction: column;
             align-items: flex-start;
-            border-bottom: 2px solid #ff007f;
+            border-bottom: 2px solid #00FF41;
             cursor: pointer;
             transition: transform 0.2s ease;
         }
         .user-item:hover {
-            background: rgba(255, 0, 127, 0.2);
+            background: rgba(0, 255, 0, 0.1);
             transform: scale(1.02);
         }
         .user-item img {
@@ -141,7 +157,7 @@
             border-radius: 50%;
             margin-right: 10px;
             object-fit: contain;
-            border: 1px solid #00ffcc;
+            border: 1px solid #00FF00;
         }
         .user-item .group-header {
             display: flex;
@@ -150,17 +166,17 @@
         }
         .user-item .group-name {
             font-weight: bold;
-            color: #00ffcc;
+            color: #00FF00;
             font-size: 1.2em;
             margin-right: auto;
-            text-shadow: 0 0 5px #00ffcc;
+            text-shadow: 0 0 5px #00FF00;
         }
         .user-item .status {
             font-size: 0.9em;
-            color: #ff007f;
+            color: #00FF41;
             margin-top: 5px;
             width: 100%;
-            text-shadow: 0 0 5px #ff007f;
+            text-shadow: 0 0 5px #00FF41;
         }
         .user-item .action-buttons {
             display: flex;
@@ -171,25 +187,25 @@
         }
         .user-item button {
             padding: 5px 10px;
-            background: #ff007f;
-            color: #00ffcc;
+            background: #00FF41;
+            color: #0D0208;
             border: none;
             border-radius: 5px;
             font-size: 0.9em;
             cursor: pointer;
-            font-family: 'VT323', monospace;
-            box-shadow: 0 0 10px #ff007f;
-            transition: all 0.3s ease;
+            font-family: 'Courier New', monospace;
+            box-shadow: 0 0 5px #00FF41;
+            animation: flicker 1.5s infinite alternate;
         }
         .user-item button:hover {
-            background: #00ffcc;
-            color: #ff007f;
-            box-shadow: 0 0 15px #00ffcc;
+            background: #00FF00;
+            color: #0D0208;
+            box-shadow: 0 0 10px #00FF00;
         }
         .chat-header {
             padding: 8px 12px;
-            background: rgba(0, 0, 0, 0.8);
-            border-bottom: 2px solid #ff007f;
+            background: rgba(0, 0, 0, 0.95);
+            border-bottom: 2px solid #00FF41;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -201,44 +217,44 @@
         }
         .chat-header .name {
             font-weight: bold;
-            color: #00ffcc;
-            background: rgba(255, 0, 127, 0.3);
+            color: #00FF00;
+            background: rgba(0, 255, 65, 0.2);
             padding: 6px 12px;
             border-radius: 20px;
             font-size: 1em;
-            text-shadow: 0 0 5px #00ffcc;
+            text-shadow: 0 0 5px #00FF00;
         }
         .chat-header .badge {
-            background: rgba(255, 0, 127, 0.3);
+            background: rgba(0, 255, 65, 0.2);
             padding: 6px 12px;
             border-radius: 20px;
             font-size: 1em;
-            color: #00ffcc;
-            text-shadow: 0 0 5px #00ffcc;
+            color: #00FF00;
+            text-shadow: 0 0 5px #00FF00;
         }
         .chat-header .refresh-btn {
             padding: 6px 16px;
-            background: #ff007f;
-            color: #00ffcc;
+            background: #00FF41;
+            color: #0D0208;
             border: none;
             border-radius: 20px;
             cursor: pointer;
             font-weight: bold;
             font-size: 1em;
-            font-family: 'VT323', monospace;
-            box-shadow: 0 0 10px #ff007f;
-            transition: all 0.3s ease;
+            font-family: 'Courier New', monospace;
+            box-shadow: 0 0 10px #00FF41;
+            animation: flicker 1.5s infinite alternate;
         }
         .chat-header .refresh-btn:hover {
-            background: #00ffcc;
-            color: #ff007f;
-            box-shadow: 0 0 15px #00ffcc;
+            background: #00FF00;
+            color: #0D0208;
+            box-shadow: 0 0 15px #00FF00;
         }
         .messages {
             flex: 1;
             overflow-y: auto;
             padding: 10px;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.95);
         }
         .message {
             margin: 10px 0;
@@ -258,76 +274,76 @@
             position: relative;
             display: flex;
             flex-direction: column;
-            border: 2px solid #ff007f;
-            box-shadow: 0 0 10px #ff007f;
+            border: 2px solid #00FF41;
+            box-shadow: 0 0 10px #00FF41;
         }
         .message.sent .message-content {
-            background: rgba(255, 0, 127, 0.3);
-            color: #00ffcc;
+            background: rgba(0, 255, 65, 0.2);
+            color: #00FF00;
         }
         .message.received .message-content {
-            background: rgba(0, 255, 204, 0.3);
-            color: #ff007f;
-            box-shadow: 0 0 10px #00ffcc;
+            background: rgba(0, 255, 0, 0.1);
+            color: #00FF41;
+            box-shadow: 0 0 10px #00FF00;
         }
         .message:nth-child(even) .message-content {
             background: rgba(0, 0, 0, 0.5);
         }
         .message-sender {
             font-size: 0.8em;
-            color: #00ffcc;
+            color: #00FF00;
             margin-bottom: 5px;
             display: flex;
             align-items: center;
             gap: 4px;
-            text-shadow: 0 0 5px #00ffcc;
+            text-shadow: 0 0 5px #00FF00;
         }
         .message-text {
             word-wrap: break-word;
         }
         .message-timestamp {
             font-size: 0.7em;
-            color: #ff007f;
+            color: #00FF41;
             align-self: flex-end;
             margin-top: 5px;
-            text-shadow: 0 0 5px #ff007f;
+            text-shadow: 0 0 5px #00FF41;
         }
         .input-area {
             display: flex;
             padding: 8px 12px;
-            background: rgba(0, 0, 0, 0.8);
-            border-top: 2px solid #ff007f;
+            background: rgba(0, 0, 0, 0.95);
+            border-top: 2px solid #00FF41;
         }
         input[type="text"] {
             flex: 1;
             padding: 6px 12px;
-            background: rgba(255, 0, 127, 0.3);
-            color: #00ffcc;
+            background: rgba(0, 255, 65, 0.2);
+            color: #00FF00;
             border: none;
             border-radius: 20px;
             margin-right: 10px;
             outline: none;
             font-size: 1em;
-            font-family: 'VT323', monospace;
-            box-shadow: 0 0 10px #ff007f;
+            font-family: 'Courier New', monospace;
+            box-shadow: 0 0 10px #00FF41;
         }
         .input-area .send-btn {
             padding: 6px 16px;
-            background: #ff007f;
-            color: #00ffcc;
+            background: #00FF41;
+            color: #0D0208;
             border: none;
             border-radius: 20px;
             cursor: pointer;
             font-weight: bold;
             font-size: 1em;
-            font-family: 'VT323', monospace;
-            box-shadow: 0 0 10px #ff007f;
-            transition: all 0.3s ease;
+            font-family: 'Courier New', monospace;
+            box-shadow: 0 0 10px #00FF41;
+            animation: flicker 1.5s infinite alternate;
         }
         .input-area .send-btn:hover {
-            background: #00ffcc;
-            color: #ff007f;
-            box-shadow: 0 0 15px #00ffcc;
+            background: #00FF00;
+            color: #0D0208;
+            box-shadow: 0 0 15px #00FF00;
         }
         .modal {
             position: fixed;
@@ -335,53 +351,58 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.9);
             display: none;
             justify-content: center;
             align-items: center;
         }
         .modal-content {
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.95);
             padding: 20px;
             border-radius: 10px;
             width: 90%;
             max-width: 400px;
             text-align: center;
-            border: 2px solid #00ffcc;
-            color: #00ffcc;
-            box-shadow: 0 0 15px #00ffcc;
+            border: 2px solid #00FF00;
+            color: #00FF00;
+            box-shadow: 0 0 15px #00FF41;
         }
         .modal-content input {
             width: 100%;
             margin: 10px 0;
             padding: 10px;
-            border: 1px solid #ff007f;
+            border: 1px solid #00FF41;
             border-radius: 5px;
-            background: rgba(255, 0, 127, 0.3);
-            color: #00ffcc;
-            font-family: 'VT323', monospace;
+            background: rgba(0, 255, 65, 0.2);
+            color: #00FF00;
+            font-family: 'Courier New', monospace;
         }
         .modal-content button {
             padding: 10px 20px;
-            background: #ff007f;
-            color: #00ffcc;
+            background: #00FF41;
+            color: #0D0208;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            font-family: 'VT323', monospace;
-            box-shadow: 0 0 10px #ff007f;
-            transition: all 0.3s ease;
+            font-family: 'Courier New', monospace;
+            box-shadow: 0 0 10px #00FF41;
+            animation: flicker 1.5s infinite alternate;
         }
         .modal-content button:hover {
-            background: #00ffcc;
-            color: #ff007f;
-            box-shadow: 0 0 15px #00ffcc;
+            background: #00FF00;
+            color: #0D0208;
+            box-shadow: 0 0 15px #00FF00;
         }
         .status {
             margin-top: 10px;
             font-size: 1em;
-            color: #ff007f;
-            text-shadow: 0 0 5px #ff007f;
+            color: #00FF41;
+            text-shadow: 0 0 5px #00FF41;
+        }
+        @keyframes flicker {
+            0% { opacity: 1; }
+            50% { opacity: 0.95; }
+            100% { opacity: 0.9; }
         }
         @media (max-width: 600px) {
             .container { height: 100vh; border-radius: 0; box-shadow: none; margin: 0; }
@@ -401,60 +422,60 @@
 <body>
     <div class="container">
         <div class="sidebar">
-            <div class="header">JaceChat</div>
+            <div class="header">> JaceChat</div>
             <div class="connect-section">
-                <button id="connectWalletButton">Connect Wallet</button>
-                <div id="networkStatus" class="status">Click to connect...</div>
+                <button id="connectWalletButton">> Connect Wallet</button>
+                <div id="networkStatus" class="status">> Click to connect...</div>
             </div>
             <div class="button-group">
-                <button id="createGroupButton" onclick="openCreateGroupModal()">Create Group</button>
-                <button onclick="joinGroup()">Join Group</button>
-                <button id="setNicknameButton" onclick="openSetNicknameModal()">Set Nickname</button>
+                <button id="createGroupButton" onclick="openCreateGroupModal()">> Create Group</button>
+                <button onclick="joinGroup()">> Join Group</button>
+                <button id="setNicknameButton" onclick="openSetNicknameModal()">> Set Nickname</button>
             </div>
             <ul class="user-list" id="groupList"></ul>
         </div>
         <div class="chat-area">
             <div class="chat-header">
                 <div class="info">
-                    <div class="name" id="chatTitle">Select a Group</div>
-                    <div class="badge" id="messageCount">0 messages</div>
+                    <div class="name" id="chatTitle">> Select a Group</div>
+                    <div class="badge" id="messageCount">> 0 messages</div>
                 </div>
-                <button class="refresh-btn" onclick="loadMessages()">Refresh</button>
+                <button class="refresh-btn" onclick="loadMessages()">> Refresh</button>
             </div>
             <div class="messages" id="messageList"></div>
             <div class="input-area">
-                <input type="text" id="messageInput" placeholder="Jace something...">
-                <button class="send-btn" onclick="sendMessage()">Send</button>
+                <input type="text" id="messageInput" placeholder="> Jace something...">
+                <button class="send-btn" onclick="sendMessage()">> Send</button>
             </div>
         </div>
     </div>
     <div class="modal" id="createGroupModal">
         <div class="modal-content">
-            <h2>Create Group</h2>
-            <input type="text" id="groupName" placeholder="Group Name (max 20 chars)">
-            <input type="text" id="paymentTokenInput" placeholder="Token Address (0x...)">
-            <input type="text" id="joinFee" placeholder="Join Fee (min 10)">
-            <button onclick="createGroup()">Create</button>
-            <button onclick="closeModal('createGroupModal')">Cancel</button>
+            <h2>> Create Group</h2>
+            <input type="text" id="groupName" placeholder="> Group Name (max 20 chars)">
+            <input type="text" id="paymentTokenInput" placeholder="> Token Address (0x...)">
+            <input type="text" id="joinFee" placeholder="> Join Fee (min 10)">
+            <button onclick="createGroup()">> Create</button>
+            <button onclick="closeModal('createGroupModal')">> Cancel</button>
             <div class="status" id="createStatus"></div>
         </div>
     </div>
     <div class="modal" id="joinGroupModal">
         <div class="modal-content">
-            <h2>Join Group</h2>
-            <input type="text" id="groupIdInput" placeholder="Group ID">
+            <h2>> Join Group</h2>
+            <input type="text" id="groupIdInput" placeholder="> Group ID">
             <div class="status" id="joinFeeInfo"></div>
-            <button onclick="joinGroupConfirm()">Join</button>
-            <button onclick="closeModal('joinGroupModal')">Cancel</button>
+            <button onclick="joinGroupConfirm()">> Join</button>
+            <button onclick="closeModal('joinGroupModal')">> Cancel</button>
             <div class="status" id="joinStatus"></div>
         </div>
     </div>
     <div class="modal" id="setNicknameModal">
         <div class="modal-content">
-            <h2>Set Nickname</h2>
-            <input type="text" id="nicknameInput" placeholder="Nickname (max 12 chars)">
-            <button onclick="setNickname()">Save</button>
-            <button onclick="closeModal('setNicknameModal')">Cancel</button>
+            <h2>> Set Nickname</h2>
+            <input type="text" id="nicknameInput" placeholder="> Nickname (max 12 chars)">
+            <button onclick="setNickname()">> Save</button>
+            <button onclick="closeModal('setNicknameModal')">> Cancel</button>
             <div class="status" id="nicknameStatus"></div>
         </div>
     </div>
@@ -493,45 +514,95 @@
             chainId: 56,
             chainName: 'BNB Chain',
             nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
-            rpcUrls: ['https://bsc-dataseed.binance.org/'],
+            rpcUrls: [
+                'https://bsc-dataseed1.ninicoin.io/',
+                'https://bsc-dataseed2.defibit.io/',
+                'https://bsc-dataseed.binance.org/'
+            ],
             blockExplorerUrls: ['https://bscscan.com']
         };
         let currentGroupId = null;
 
-        async function connectWallet() {
+        function detectWallet() {
+            const provider = window.ethereum;
+            if (!provider) return { name: null, provider: null };
+            if (provider.isMetaMask) return { name: 'MetaMask', provider };
+            if (provider.isOkxWallet) return { name: 'OKX Wallet', provider };
+            if (provider.isTrustWallet) return { name: 'Trust Wallet', provider };
+            if (provider.isCoinbaseWallet) return { name: 'Coinbase Wallet', provider };
+            if (provider.isBitget) return { name: 'Bitget Wallet', provider };
+            if (provider.isRabby) return { name: 'Rabby Wallet', provider };
+            if (window.walletConnect) return { name: 'WalletConnect', provider: window.walletConnect };
+            return { name: 'Unknown Wallet', provider };
+        }
+
+        async function initializeWeb3() {
             const status = document.getElementById('networkStatus');
             const connectButton = document.getElementById('connectWalletButton');
+            const { name, provider } = detectWallet();
+            if (!provider) {
+                status.innerHTML = '> No wallet detected. Please install a compatible wallet (e.g., <a href="https://metamask.io" target="_blank">MetaMask</a>).';
+                return;
+            }
             try {
-                if (!window.ethereum) {
-                    status.innerHTML = 'No wallet detected. Please install <a href="https://metamask.io" target="_blank">MetaMask</a> and run via a local server (e.g., "npx serve").';
-                    throw new Error("No wallet detected");
-                }
                 connectButton.classList.add('loading');
-                status.innerText = "Connecting...";
-                web3 = new Web3(window.ethereum);
-                accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                if (!accounts.length) throw new Error("Unlock or connect wallet.");
+                status.innerText = "> Connecting to wallet...";
+                web3 = new Web3(provider);
+                accounts = await provider.request({ method: 'eth_requestAccounts' });
+                if (!accounts.length) throw new Error("Unlock or connect wallet");
                 const chainId = await web3.eth.getChainId();
                 if (chainId !== 56) {
-                    try {
-                        await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: "0x38" }] });
-                    } catch (switchError) {
-                        if (switchError.code === 4902) await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [bnbChain] });
-                        else throw switchError;
-                    }
+                    status.innerText = "> Switching to BNB Chain...";
+                    await switchNetwork();
                 }
                 contract = new web3.eth.Contract(contractABI, contractAddress);
                 const nickname = await contract.methods.getNickname(accounts[0]).call() || accounts[0].slice(0, 6) + "..." + accounts[0].slice(-4);
-                connectButton.innerHTML = `Connected: ${nickname}`;
-                status.innerText = "Connected to BNB Chain";
+                connectButton.innerHTML = `> Connected: ${nickname} (${name})`;
+                status.innerText = "> Connected to BNB Chain";
                 updateButtons();
                 updateGroupList();
                 setupEventListeners();
             } catch (error) {
-                console.error(error);
-                status.innerText = "Failed: " + error.message;
+                console.error("Wallet connection error:", error);
+                let errorMessage = "> Connection failed: ";
+                if (error.message.includes("circuit breaker is open")) {
+                    errorMessage += "Circuit breaker is open. Try switching RPC (e.g., https://bsc-dataseed1.ninicoin.io/) or updating your wallet.";
+                } else if (error.code === 4001) {
+                    errorMessage += "User rejected the request. Please approve in your wallet.";
+                } else {
+                    errorMessage += error.message;
+                }
+                status.innerText = errorMessage;
             } finally {
                 connectButton.classList.remove('loading');
+            }
+        }
+
+        async function switchNetwork() {
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: `0x${bnbChain.chainId.toString(16)}` }]
+                });
+            } catch (switchError) {
+                if (switchError.code === 4902) {
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [{
+                                chainId: `0x${bnbChain.chainId.toString(16)}`,
+                                chainName: bnbChain.chainName,
+                                rpcUrls: bnbChain.rpcUrls,
+                                nativeCurrency: bnbChain.nativeCurrency,
+                                blockExplorerUrls: bnbChain.blockExplorerUrls
+                            }]
+                        });
+                    } catch (addError) {
+                        throw new Error(`Failed to add BNB Chain: ${addError.message}`);
+                    }
+                } else {
+                    throw new Error(`Failed to switch to BNB Chain: ${switchError.message}`);
+                }
             }
         }
 
@@ -541,11 +612,11 @@
                 .then(result => {
                     const createButton = document.getElementById('createGroupButton');
                     if (result.hasGroup) {
-                        createButton.textContent = `Group ID: ${result.groupId}`;
+                        createButton.textContent = `> Group ID: ${result.groupId}`;
                         createButton.classList.add('disabled');
                         createButton.onclick = null;
                     } else {
-                        createButton.textContent = 'Create Group';
+                        createButton.textContent = '> Create Group';
                         createButton.classList.remove('disabled');
                         createButton.onclick = () => openCreateGroupModal();
                     }
@@ -555,11 +626,11 @@
                 .then(nickname => {
                     const nicknameButton = document.getElementById('setNicknameButton');
                     if (nickname && nickname.trim() !== '') {
-                        nicknameButton.textContent = nickname;
+                        nicknameButton.textContent = `> ${nickname}`;
                         nicknameButton.classList.add('disabled');
                         nicknameButton.onclick = null;
                     } else {
-                        nicknameButton.textContent = 'Set Nickname';
+                        nicknameButton.textContent = '> Set Nickname';
                         nicknameButton.classList.remove('disabled');
                         nicknameButton.onclick = () => openSetNicknameModal();
                     }
@@ -594,10 +665,10 @@
                         <img src="https://woofingjace.com/images/jace.png" alt="Group">
                         <div class="group-name">${group.name}</div>
                     </div>
-                    <div class="status">Members: ${group.memberCount} | You: ${nickname} | Fee: ${web3.utils.fromWei(group.joinFee, "ether")} ${tokenSymbol}</div>
+                    <div class="status">> Members: ${group.memberCount} | You: ${nickname} | Fee: ${web3.utils.fromWei(group.joinFee, "ether")} ${tokenSymbol}</div>
                     <div class="action-buttons">
-                        <button onclick="selectGroup(${groupId})">Chat</button>
-                        <button onclick="leaveGroup(${groupId})">Leave</button>
+                        <button onclick="selectGroup(${groupId})">> Chat</button>
+                        <button onclick="leaveGroup(${groupId})">> Leave</button>
                     </div>
                 `;
                 groupList.appendChild(li);
@@ -621,12 +692,12 @@
             if (!name || !joinFee) return alert("Please fill all fields!");
             try {
                 await contract.methods.createGroup(name, paymentToken, web3.utils.toWei(joinFee, "ether")).send({ from: accounts[0] });
-                document.getElementById('createStatus').innerText = "Group created!";
+                document.getElementById('createStatus').innerText = "> Group created!";
                 updateGroupList();
                 updateButtons();
                 closeModal('createGroupModal');
             } catch (error) {
-                document.getElementById('createStatus').innerText = "Failed: " + error.message;
+                document.getElementById('createStatus').innerText = "> Failed: " + error.message;
             }
         }
 
@@ -638,16 +709,16 @@
                 const joinFeeWei = group.joinFee;
                 const joinFeeEther = web3.utils.fromWei(joinFeeWei, "ether");
                 const tokenSymbol = await getTokenSymbol(group.paymentToken);
-                document.getElementById('joinFeeInfo').innerText = `Join fee: ${joinFeeEther} ${tokenSymbol}`;
+                document.getElementById('joinFeeInfo').innerText = `> Join fee: ${joinFeeEther} ${tokenSymbol}`;
                 const tokenContract = new web3.eth.Contract([{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"}], group.paymentToken);
                 await tokenContract.methods.approve(contractAddress, joinFeeWei).send({ from: accounts[0] });
                 await contract.methods.joinGroup(groupId).send({ from: accounts[0] });
-                document.getElementById('joinStatus').innerText = "Joined!";
+                document.getElementById('joinStatus').innerText = "> Joined!";
                 updateGroupList();
                 if (currentGroupId === parseInt(groupId)) loadMessages();
                 closeModal('joinGroupModal');
             } catch (error) {
-                document.getElementById('joinStatus').innerText = "Failed: " + error.message;
+                document.getElementById('joinStatus').innerText = "> Failed: " + error.message;
             }
         }
 
@@ -660,8 +731,8 @@
                 if (currentGroupId === groupId) {
                     currentGroupId = null;
                     document.getElementById('messageList').innerHTML = '';
-                    document.getElementById('chatTitle').innerText = 'Select a Group';
-                    document.getElementById('messageCount').innerText = '0 messages';
+                    document.getElementById('chatTitle').innerText = '> Select a Group';
+                    document.getElementById('messageCount').innerText = '> 0 messages';
                 }
             } catch (error) {
                 alert("Failed: " + error.message);
@@ -671,9 +742,9 @@
         async function selectGroup(groupId) {
             currentGroupId = parseInt(groupId);
             const group = await contract.methods.groups(currentGroupId).call();
-            document.getElementById('chatTitle').innerText = group.name;
+            document.getElementById('chatTitle').innerText = `> ${group.name}`;
             const messages = await contract.methods.getMessages(currentGroupId, 0, 100).call();
-            document.getElementById('messageCount').innerText = `${messages.length} messages`;
+            document.getElementById('messageCount').innerText = `> ${messages.length} messages`;
             loadMessages();
         }
 
@@ -690,7 +761,7 @@
                         return `
                             <div class="message ${msg.sender.toLowerCase() === accounts[0].toLowerCase() ? 'sent' : 'received'}">
                                 <div class="message-content">
-                                    <div class="message-sender">${senderNickname}</div>
+                                    <div class="message-sender">> ${senderNickname}</div>
                                     <div class="message-text">${msg.content}</div>
                                     <div class="message-timestamp">${new Date(msg.timestamp * 1000).toLocaleTimeString()}</div>
                                 </div>
@@ -699,7 +770,7 @@
                     }));
                     messageList.innerHTML = messageHTML.join('');
                 } else {
-                    messageList.innerHTML = '<div style="text-align: center; color: #00ffcc; text-shadow: 0 0 5px #00ffcc;">No messages yet!</div>';
+                    messageList.innerHTML = '<div style="text-align: center; color: #00FF00; text-shadow: 0 0 5px #00FF00;">> No messages yet!</div>';
                 }
                 messageList.scrollTop = messageList.scrollHeight;
             } catch (error) {
@@ -725,15 +796,15 @@
             const nickname = document.getElementById('nicknameInput').value;
             try {
                 await contract.methods.setNickname(nickname).send({ from: accounts[0] });
-                document.getElementById('nicknameStatus').innerText = "Nickname set!";
+                document.getElementById('nicknameStatus').innerText = "> Nickname set!";
                 updateGroupList();
                 updateButtons();
                 if (currentGroupId) loadMessages();
                 const nicknameDisplay = nickname || accounts[0].slice(0, 6) + "..." + accounts[0].slice(-4);
-                document.getElementById('connectWalletButton').innerHTML = `Connected: ${nicknameDisplay}`;
+                document.getElementById('connectWalletButton').innerHTML = `> Connected: ${nicknameDisplay}`;
                 closeModal('setNicknameModal');
             } catch (error) {
-                document.getElementById('nicknameStatus').innerText = "Failed: " + error.message;
+                document.getElementById('nicknameStatus').innerText = "> Failed: " + error.message;
             }
         }
 
@@ -751,44 +822,44 @@
                         contract.methods.getNickname(accounts[0]).call()
                             .then(nickname => {
                                 const nicknameDisplay = nickname || accounts[0].slice(0, 6) + "..." + accounts[0].slice(-4);
-                                document.getElementById('connectWalletButton').innerHTML = `Connected: ${nicknameDisplay}`;
+                                document.getElementById('connectWalletButton').innerHTML = `> Connected: ${nicknameDisplay}`;
                             });
                     }
                 }
             });
         }
 
-        document.getElementById('connectWalletButton').addEventListener('click', connectWallet);
+        document.getElementById('connectWalletButton').addEventListener('click', initializeWeb3);
 
         window.ethereum?.on('chainChanged', (chainId) => {
             if (parseInt(chainId, 16) !== 56) {
-                document.getElementById('networkStatus').innerText = "Switched to wrong network. Please reconnect to BNB Chain.";
+                document.getElementById('networkStatus').innerText = "> Switched to wrong network. Please reconnect to BNB Chain.";
                 web3 = null;
                 contract = null;
                 accounts = null;
-                document.getElementById('connectWalletButton').textContent = 'Connect Wallet';
+                document.getElementById('connectWalletButton').textContent = '> Connect Wallet';
             } else {
-                connectWallet();
+                initializeWeb3();
             }
         });
 
         window.ethereum?.on('accountsChanged', (newAccounts) => {
             if (newAccounts.length) {
-                connectWallet();
+                initializeWeb3();
             } else {
-                document.getElementById('networkStatus').innerText = "Wallet disconnected. Please reconnect.";
+                document.getElementById('networkStatus').innerText = "> Wallet disconnected. Please reconnect.";
                 web3 = null;
                 contract = null;
                 accounts = null;
-                document.getElementById('connectWalletButton').textContent = 'Connect Wallet';
+                document.getElementById('connectWalletButton').textContent = '> Connect Wallet';
             }
         });
 
         window.addEventListener('load', () => {
             if (!window.location.protocol.startsWith('http')) {
-                document.getElementById('networkStatus').innerHTML = 'Please run this page via a local server (e.g., "npx serve") to connect MetaMask.';
-            } else if (!window.ethereum) {
-                document.getElementById('networkStatus').innerHTML = 'No wallet detected. Please install <a href="https://metamask.io" target="_blank">MetaMask</a>.';
+                document.getElementById('networkStatus').innerHTML = '> Please run this page via a local server (e.g., "npx serve") to connect your wallet.';
+            } else {
+                initializeWeb3();
             }
         });
     </script>
